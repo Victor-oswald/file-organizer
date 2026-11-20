@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+.venv/
+venv/
+.idea/
+.vscode/
+*.egg-info/
+build/
+dist/
+# benchmark scratch data (regenerate with tools/make_dataset.py)
+/tmp/
+*.tmp
+.DS_Store
+Thumbs.db

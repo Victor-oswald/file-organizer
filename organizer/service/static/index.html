@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>File Organizer</title>
+<style>
+:root{
+  --bg:#f0f0f0; --panel:#f7f7f7; --surface:#fff; --line:#d4d4d4; --line2:#e7e7e7; --text:#1d1d1d; --muted:#6b6b6b;
+  --accent:#1862c4; --accent-text:#fff; --ok:#1f7a35; --warn:#a85f00; --bad:#c0292b; --info:#4a5b73;
+  --hover:#edf2fa; --sel:#dde8f7; --flash:#fff3b8; color-scheme:light;
+  --mono:ui-monospace,"Cascadia Mono","SF Mono",Consolas,Menlo,monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#1a1a1a; --panel:#202020; --surface:#252525; --line:#3b3b3b; --line2:#303030; --text:#e4e4e4; --muted:#9a9a9a;
+  --accent:#4b94f0; --accent-text:#0b0b0b; --ok:#5fbf78; --warn:#e0a040; --bad:#ef7b7b; --info:#93a4bd;
+  --hover:#2c3440; --sel:#2a3a52; --flash:#4a4420; color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root[data-theme="auto"]{
+    --bg:#1a1a1a; --panel:#202020; --surface:#252525; --line:#3b3b3b; --line2:#303030; --text:#e4e4e4; --muted:#9a9a9a;
+    --accent:#4b94f0; --accent-text:#0b0b0b; --ok:#5fbf78; --warn:#e0a040; --bad:#ef7b7b; --info:#93a4bd;
+    --hover:#2c3440; --sel:#2a3a52; --flash:#4a4420; color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{padding:3px 11px;border:1px solid var(--line);background:var(--surface);border-radius:3px;cursor:pointer;white-space:nowrap}
+button:hover{background:var(--hover)}
+button:active{background:var(--sel)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-text)}
+button.primary:hover{filter:brightness(1.1)}
+button.danger{color:var(--bad)}
+button[disabled]{opacity:.45;pointer-events:none}
+input[type=text],select{padding:3px 6px;border:1px solid var(--line);border-radius:3px;background:var(--surface);min-width:0}
+input[type=checkbox]{accent-color:var(--accent);margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12px}
+/* ---------- toolbar ---------- */
+#bar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+#bar .name{font-weight:650;margin-right:10px}
+#bar .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+#bar .grow{flex:1}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+.dot.beat{animation:beat .7s}
+@keyframes beat{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 70%,transparent)}100%{box-shadow:0 0 0 7px transparent}}
+.seg{display:inline-flex;align-items:center;gap:7px}
+/* ---------- layout ---------- */
+#mid{display:grid;grid-template-columns:214px 1fr;min-height:0}
+#left{background:var(--panel);border-right:1px solid var(--line);overflow:auto;display:flex;flex-direction:column}
+#left h3{margin:0;padding:8px 10px 4px;font-size:11px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.frow{display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border:0;border-radius:0;background:none;width:100%;text-align:left}
+.frow:hover{background:var(--hover)}.frow.on{background:var(--sel)}
+.frow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.badge{background:var(--accent);color:var(--accent-text);border-radius:8px;padding:0 6px;font-size:11px;font-weight:650;min-width:16px;text-align:center}
+#left .foot{margin-top:auto;padding:8px 10px;border-top:1px solid var(--line2)}
+#main{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--surface)}
+#tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel);padding:0 6px}
+.tab{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:7px 12px;color:var(--muted)}
+.tab:hover{color:var(--text);background:none}
+.tab.on{color:var(--text);border-bottom-color:var(--accent);font-weight:600}
+#content{flex:1;min-height:0;overflow:auto}
+.tools{display:flex;gap:8px;align-items:center;padding:6px 10px;border-bottom:1px solid var(--line2);position:sticky;top:0;background:var(--surface);z-index:2}
+.tools .grow{flex:1}
+/* ---------- tables ---------- */
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{position:sticky;top:37px;text-align:left;font-weight:600;font-size:12px;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--line);background:var(--panel);z-index:1}
+td{padding:3px 8px;border-bottom:1px solid var(--line2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+tr:hover td{background:var(--hover)}
+tr.flash td{animation:flash 1.8s ease-out}
+@keyframes flash{from{background:var(--flash)}}
+tr.grp td{background:var(--panel);font-weight:600;border-top:1px solid var(--line);white-space:normal}
+td.time{color:var(--muted);font-variant-numeric:tabular-nums}
+.tag{font-weight:600;font-size:12px}
+.t-renamed,.t-moved,.t-undone{color:var(--ok)}.t-proposed{color:var(--accent)}.t-review,.t-duplicate{color:var(--warn)}
+.t-error{color:var(--bad)}.t-detected,.t-kept,.t-ignored,.t-skipped,.t-info{color:var(--info)}
+.old{color:var(--muted)}.arrow{color:var(--muted);margin:0 5px}.new{font-weight:600}.dir{color:var(--muted)}
+.empty{padding:22px 16px;color:var(--muted);max-width:64ch}
+.empty h2{font-size:15px;color:var(--text);margin:0 0 4px}
+.empty p{margin:0 0 10px}
+/* ---------- folder settings ---------- */
+.props{display:grid;grid-template-columns:190px minmax(0,1fr);max-width:780px;padding:2px 14px 12px}
+.props>div{padding:6px 0;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:8px;min-height:32px}
+.props>div.k{color:var(--muted)}
+.props .hint{color:var(--muted);font-size:12px}
+.section{padding:12px 14px 4px;font-weight:650}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px}
+/* ---------- status bar ---------- */
+#status{display:flex;align-items:center;gap:14px;padding:3px 10px;background:var(--panel);border-top:1px solid var(--line);font-size:12px;min-height:26px}
+#status .live{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+#status .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prog{width:120px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;flex:none}
+.prog i{display:block;height:100%;background:var(--accent);transition:width .2s}
+.spin{width:11px;height:11px;border:2px solid var(--accent);border-right-color:transparent;border-radius:50%;animation:rot .7s linear infinite;flex:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+/* ---------- dialogs ---------- */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:grid;place-items:center;padding:16px;z-index:50}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:4px;width:min(540px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.mhead{padding:10px 14px;border-bottom:1px solid var(--line);font-weight:650}
+.mbody{padding:12px 14px;overflow:auto}
+.mfoot{padding:8px 14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:var(--panel)}
+.form{display:grid;grid-template-columns:150px minmax(0,1fr);gap:9px 10px;align-items:center}
+.form .k{color:var(--muted)}
+.row2{display:flex;gap:6px}.row2 input{flex:1}
+.crumbs{display:flex;flex-wrap:wrap;gap:2px;align-items:center;margin-bottom:8px}
+.crumbs button{padding:1px 6px}
+.dirs{border:1px solid var(--line);height:260px;overflow:auto}
+.dirrow{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line2);border-radius:0;padding:4px 8px}
+#toasts{position:fixed;right:10px;bottom:34px;display:grid;gap:6px;z-index:100}
+.toast{background:var(--text);color:var(--bg);padding:6px 12px;border-radius:3px;max-width:380px}
+.toast.bad{background:var(--bad);color:#fff}
+@media (max-width:760px){#mid{grid-template-columns:1fr}#left{display:none}.props{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="mid"><nav id="left" aria-label="Folders"></nav><section id="main"><div id="tabs" role="tablist"></div><div id="content"></div></section></div>
+<div id="status" role="status"></div>
+<div id="modals"></div><div id="toasts" aria-live="polite"></div>
+<script>
+"use strict";
+const TOKEN = "{{TOKEN}}", VERSION = "{{VERSION}}";
+const $ = (s) => document.querySelector(s);
+
+/* Safe DOM builder: text is ALWAYS inserted as text (file names can contain anything). */
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (["checked", "value", "disabled", "selected"].includes(k)) el[k] = v;
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  const add = (c) => { if (c == null || c === false) return; if (Array.isArray(c)) c.forEach(add); else el.append(c instanceof Node ? c : document.createTextNode(String(c))); };
+  kids.forEach(add);
+  return el;
+}
+/* replaceChildren() does NOT flatten arrays or skip null (it would print "null"); put() does both. */
+function put(el, ...kids) { el.replaceChildren(...kids.flat(Infinity).filter((k) => k != null && k !== false)); }
+async function api(path, method = "GET", body) {
+  const r = await fetch("/api" + path, { method, headers: { "X-Auth-Token": TOKEN, "Content-Type": "application/json" }, body: body !== undefined ? JSON.stringify(body) : undefined });
+  let data = {}; try { data = await r.json(); } catch (e) {}
+  if (!r.ok) throw new Error(data.error || ("Request failed (" + r.status + ")"));
+  return data;
+}
+
+/* ---------- state ---------- */
+const S = { st: null, events: [], lastEvent: 0, flash: new Set(), batches: [], details: {}, sel: {}, open: {}, view: "activity",
+            folder: null, filter: "all", q: "", skew: 0, offline: false, sig: "", msg: "", msgUntil: 0, lastBeat: 0 };
+const KIND = { detected: "New", proposed: "Awaiting OK", renamed: "Renamed", moved: "Moved", review: "Set aside", duplicate: "Duplicate",
+               kept: "Left alone", ignored: "Ignored", skipped: "Skipped", undone: "Undone", error: "Problem", info: "Info" };
+const GROUPS = { all: null, changes: ["renamed", "moved", "review", "undone", "proposed"], idle: ["kept", "ignored", "detected", "duplicate", "skipped", "info"], problems: ["error"] };
+const nowS = () => Date.now() / 1000 + S.skew;
+const base = (p) => p.split(/[\\/]/).filter(Boolean).pop() || p;
+const plural = (n, w) => n + " " + w + (n === 1 ? "" : "s");
+const pct = (c) => Math.round(c * 100) + "%";
+function sureness(c) { return c >= .9 ? "very sure" : c >= .75 ? "confident" : c >= .6 ? "fairly sure" : "not sure"; }
+function clock(ts) { const d = new Date(ts * 1000); return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, "0")).join(":"); }
+function ago(ts) { if (!ts) return "never"; const s = Math.max(0, Math.round(nowS() - ts)); if (s < 2) return "just now"; if (s < 60) return s + "s ago"; if (s < 3600) return Math.round(s / 60) + " min ago"; return Math.round(s / 3600) + " h ago"; }
+function pathEl(rel) { const i = rel.lastIndexOf("/"); return [i >= 0 ? h("span", { class: "dir" }, rel.slice(0, i + 1)) : null, rel.slice(i + 1)]; }
+function summarize(c) { const p = [];
+  if (c.rename) p.push(plural(c.rename, "rename")); if (c.move) p.push(plural(c.move, "move")); if (c.quarantine) p.push(c.quarantine + " set aside");
+  if (c.duplicate) p.push(plural(c.duplicate, "duplicate")); if (c.flagged_duplicates) p.push(plural(c.flagged_duplicates, "duplicate") + " found");
+  return p.join(", ") || "no changes"; }
+function toast(msg, bad) { const t = h("div", { class: "toast" + (bad ? " bad" : "") }, msg); $("#toasts").append(t); setTimeout(() => t.remove(), bad ? 7000 : 2500); }
+function note(msg) { S.msg = msg; S.msgUntil = Date.now() + 3500; paintStatus(); }
+async function act(fn, ok) { try { const r = await fn(); if (ok) note(typeof ok === "function" ? ok(r) : ok); await poll(); return r; } catch (e) { toast(e.message, true); } }
+const folderById = (id) => S.st && S.st.folders.find((f) => f.id === id);
+
+/* ---------- dialogs ---------- */
+function modal(title, body, buttons) {
+  const close = () => { ov.remove(); document.removeEventListener("keydown", esc); };
+  const esc = (e) => { if (e.key === "Escape" && ov === [...document.querySelectorAll(".overlay")].pop()) close(); };
+  const ov = h("div", { class: "overlay", onclick: (e) => { if (e.target === ov) close(); } },
+    h("div", { class: "modal", role: "dialog", "aria-modal": "true", "aria-label": title }, h("div", { class: "mhead" }, title), h("div", { class: "mbody" }, body), h("div", { class: "mfoot" }, buttons(close))));
+  document.addEventListener("keydown", esc); $("#modals").append(ov);
+  const first = ov.querySelector("input,select"); if (first) first.focus();
+  return close;
+}
+function confirmBox(title, text, okLabel, danger) {
+  return new Promise((res) => { let done = false; const fin = (v) => { if (!done) { done = true; res(v); } };
+    modal(title, h("p", { style: "margin:0" }, text), (close) => [h("button", { onclick: () => { fin(false); close(); } }, "Cancel"),
+      h("button", { class: danger ? "danger" : "primary", onclick: () => { fin(true); close(); } }, okLabel)]); });
+}
+function openPicker(start, onPick) {
+  const holder = h("div"); let state = null;
+  const pickBtn = h("button", { class: "primary", disabled: true, onclick: () => { onPick(state.path); closer(); } }, "Select this folder");
+  async function go(path) { try { state = await api("/fs?path=" + encodeURIComponent(path || "")); } catch (e) { toast(e.message, true); return; } draw(); }
+  function draw() {
+    holder.replaceChildren();
+    if (!state.path) {
+      holder.append(h("div", { class: "muted", style: "margin-bottom:6px" }, "Start at:"), h("div", { class: "dirs" },
+        state.shortcuts.map((s) => h("button", { class: "dirrow", onclick: () => go(s.path) }, s.name, h("span", { class: "muted" }, "   " + s.path))),
+        state.drives.map((d) => h("button", { class: "dirrow", onclick: () => go(d) }, "Drive " + d))));
+      pickBtn.disabled = true; return;
+    }
+    const crumbs = [h("button", { onclick: () => go("") }, "Start")];
+    state.crumbs.forEach((c) => crumbs.push(h("span", { class: "muted" }, "›"), h("button", { onclick: () => go(c.path) }, c.name)));
+    holder.append(h("div", { class: "crumbs" }, crumbs), h("div", { class: "dirs" }, state.dirs.length ? state.dirs.map((d) => h("button", { class: "dirrow", onclick: () => go(d.path) }, d.name)) : h("div", { class: "empty" }, "No sub-folders here.")),
+      state.allowed ? null : h("div", { class: "muted", style: "margin-top:6px" }, "This location is too broad or protected. Open a folder inside it."));
+    pickBtn.disabled = !state.allowed;
+  }
+  const closer = modal("Choose a folder", holder, (close) => [h("button", { onclick: close }, "Cancel"), pickBtn]);
+  go(start || "");
+}
+
+/* ---------- folder options form (shared by Add and Settings) ---------- */
+const MODES = [["ask", "Ask me first, then apply"], ["auto", "Apply automatically"]];
+const CARES = [["cautious", "Cautious (rename only when very sure)"], ["balanced", "Balanced"], ["eager", "Eager (rename more files)"]];
+const DUPES = [["flag", "Only report them"], ["move", "Move extra copy to _Duplicates"]];
+const sel = (opts, value, onchange, label) => h("select", { "aria-label": label, onchange: (e) => onchange(e.target.value) }, opts.map(([v, t]) => h("option", { value: String(v), selected: String(v) === String(value) }, t)));
+const check = (value, onchange, label) => h("input", { type: "checkbox", checked: !!value, "aria-label": label, onchange: (e) => onchange(e.target.checked) });
+
+function addFolder() {
+  const o = { path: "", mode: "ask", organize_existing: true, care: "balanced", dupes: "flag", recursive: true };
+  const path = h("input", { type: "text", placeholder: "Choose a folder…", readonly: true, "aria-label": "Folder" });
+  const count = h("div", { style: "font-weight:600" }, "Choose a folder to see how many files it already contains.");
+  const hint = h("div", { class: "muted", style: "font-size:12px;margin-top:4px" });
+  const addBtn = h("button", { class: "primary" });
+  let info = null;
+  const radio = (value, title) => h("label", { style: "display:block;padding:2px 0" },
+    h("input", { type: "radio", name: "existing", checked: o.organize_existing === value, onchange: () => { o.organize_existing = value; refresh(); } }), " " + title);
+  function refresh() {
+    hint.textContent = o.organize_existing
+      ? (o.mode === "ask" ? "They will be analyzed now and listed under “Awaiting approval”. Nothing changes until you apply it."
+                          : "They will be renamed right away. You can undo it from History.")
+      : "Only files that arrive from now on are organized. You can organize the existing ones later from “Folder settings”.";
+    addBtn.textContent = o.organize_existing ? "Add and organize" : "Add and start watching";
+    if (info) count.textContent = info.files ? "This folder already contains " + plural(info.files, "file") + "." : "This folder is empty.";
+  }
+  async function loadInfo() {
+    if (!o.path) return;
+    try { info = await api("/fs/info?path=" + encodeURIComponent(o.path) + "&recursive=" + (o.recursive ? 1 : 0)); } catch (e) { info = null; }
+    refresh();
+  }
+  addBtn.addEventListener("click", async () => {
+    if (!o.path) { toast("Choose a folder first.", true); return; }
+    const r = await act(() => api("/folders", "POST", o), o.organize_existing ? "Folder added. Analyzing the files already in it…" : "Folder added");
+    if (r) { S.folder = r.id; S.view = "activity"; close(); render(); }
+  });
+  const form = h("div", { class: "form" },
+    h("div", { class: "k" }, "Folder"), h("div", { class: "row2" }, path, h("button", { onclick: () => openPicker(o.path, (p) => { o.path = p; path.value = p; loadInfo(); }) }, "Browse…")),
+    h("div", { class: "k" }, "Files already in it"), h("div", {}, count, radio(true, "Organize them now"), radio(false, "Leave them alone; only organize new files from now on"), hint),
+    h("div", { class: "k" }, "New files"), sel(MODES, o.mode, (v) => { o.mode = v; refresh(); }, "New files"),
+    h("div", { class: "k" }, "How careful"), sel(CARES, o.care, (v) => o.care = v, "Care"),
+    h("div", { class: "k" }, "Exact copies"), sel(DUPES, o.dupes, (v) => o.dupes = v, "Duplicates"),
+    h("div", { class: "k" }, "Subfolders"), h("label", {}, check(o.recursive, (v) => { o.recursive = v; loadInfo(); }, "Include subfolders"), " Include subfolders"));
+  refresh();
+  const close = modal("Add folder", form, (c) => [h("button", { onclick: c }, "Cancel"), addBtn]);
+}
+function openSettings() {
+  const st = S.st; const theme = localStorage.getItem("theme") || "auto";
+  const speeds = [[2, "Fast: every 2 seconds"], [5, "Normal: every 5 seconds"], [30, "Relaxed: every 30 seconds"], [300, "Battery saver: every 5 minutes"]];
+  if (!speeds.some((s) => s[0] === st.interval)) speeds.push([st.interval, "Every " + st.interval + " seconds"]);
+  const form = h("div", { class: "form" },
+    h("div", { class: "k" }, "Start with computer"), h("label", {}, check(st.autostart, (v) => act(() => api("/settings", "POST", { autostart: v }), v ? "Will start at sign-in" : "Will not start at sign-in"), "Start with computer"), " Start when I sign in"),
+    h("div", { class: "k" }, "Look for new files"), sel(speeds, st.interval, (v) => act(() => api("/settings", "POST", { interval: +v }), "Saved"), "Check speed"),
+    h("div", { class: "k" }, "Quick access"), h("div", { class: "muted" }, { tray: "Tray icon, near the clock (on Windows it may be under the ^ arrow). Click it to open this dashboard.",
+      window: "No tray on this system, so a small control window stays in your taskbar.",
+      none: "No tray icon or window is available. Start File Organizer again to reopen the dashboard." }[st.access] || ""),
+    h("div", { class: "k" }, "Appearance"), sel([["auto", "Match system"], ["light", "Light"], ["dark", "Dark"]], theme, (v) => { localStorage.setItem("theme", v); applyTheme(); }, "Theme"),
+    h("div", { class: "k" }, "About"), h("div", { class: "muted" }, "Version " + VERSION + ". Nothing is ever deleted or overwritten; every batch can be undone."));
+  modal("Settings", form, (close) => [h("button", { class: "danger", onclick: async () => { if (await confirmBox("Quit File Organizer?", "Monitoring stops until you start it again.", "Quit", true)) {
+      try { await api("/quit", "POST", {}); } catch (e) {} document.body.replaceChildren(h("div", { class: "empty", style: "padding:20vh 24px" }, h("h2", {}, "File Organizer has stopped."), h("p", {}, "You can close this tab."))); } } }, "Quit File Organizer"),
+    h("div", { style: "flex:1" }), h("button", { class: "primary", onclick: close }, "Close")]);
+}
+
+/* ---------- views ---------- */
+function eventRow(e) {
+  const f = e.file ? (e.to && e.to !== e.file ? [h("span", { class: "old" }, pathEl(e.file)), h("span", { class: "arrow" }, "→"), h("span", { class: "new" }, pathEl(e.to))] : pathEl(e.file)) : "";
+  return h("tr", { class: S.flash.has(e.id) ? "flash" : "" },
+    h("td", { class: "time" }, clock(e.ts)), h("td", {}, h("span", { class: "tag t-" + e.kind }, KIND[e.kind] || e.kind)),
+    h("td", { title: e.folder || "" }, e.folder || ""), h("td", { class: "mono", title: (e.file || "") + (e.to ? " → " + e.to : "") }, f),
+    h("td", { class: "muted", title: e.msg + (e.conf != null ? " (confidence " + pct(e.conf) + ")" : "") }, e.msg));
+}
+function viewActivity() {
+  const wrap = h("div");
+  const list = S.events.filter((e) => (!S.folder || e.folder_id === S.folder) && (!GROUPS[S.filter] || GROUPS[S.filter].includes(e.kind)) &&
+    (!S.q || ((e.file || "") + " " + (e.to || "") + " " + e.msg).toLowerCase().includes(S.q.toLowerCase()))).slice().reverse().slice(0, 500);
+  wrap.append(h("div", { class: "tools" },
+    h("select", { "aria-label": "Filter", onchange: (e) => { S.filter = e.target.value; render(); } },
+      [["all", "Everything"], ["changes", "Changes"], ["idle", "Left alone / info"], ["problems", "Problems"]].map(([v, t]) => h("option", { value: v, selected: S.filter === v }, t))),
+    h("input", { type: "text", placeholder: "Search files…", value: S.q, "aria-label": "Search", oninput: (e) => { S.q = e.target.value; clearTimeout(S._qt); S._qt = setTimeout(() => { render(); const i = $("#content input"); if (i) { i.focus(); i.setSelectionRange(S.q.length, S.q.length); } }, 250); } }),
+    h("span", { class: "grow" }), h("span", { class: "muted" }, plural(list.length, "entry"))));
+  if (!list.length) {
+    wrap.append(h("div", { class: "empty" }, !S.st.folders.length ? [h("h2", {}, "No folders yet"), h("p", {}, "Add a folder to watch. Everything the program does is listed here as it happens: new files detected, analyzed, renamed or left alone, and why."),
+      h("button", { class: "primary", onclick: addFolder }, "Add folder")] :
+      [h("h2", {}, "Nothing to report yet"), h("p", {}, "This list fills in live. A new file is first marked “New”, then renamed or left alone, with the reason shown. Files that were already in a folder are ignored unless you chose to organize them; use “Organize existing files” in the folder’s settings.")]));
+    return wrap;
+  }
+  wrap.append(h("table", {}, h("colgroup", {}, h("col", { style: "width:72px" }), h("col", { style: "width:92px" }), h("col", { style: "width:110px" }), h("col", { style: "width:40%" }), h("col")),
+    h("thead", {}, h("tr", {}, ["Time", "Event", "Folder", "File", "Detail"].map((t) => h("th", {}, t)))), h("tbody", {}, list.map(eventRow))));
+  return wrap;
+}
+function viewApproval() {
+  const pend = S.batches.filter((b) => b.state === "pending" && (!S.folder || b.folder_id === S.folder));
+  if (!pend.length) return h("div", { class: "empty" }, h("h2", {}, "Nothing waiting"), h("p", {}, "Folders set to “Ask me first” list their proposed changes here. Nothing is changed until you apply it."));
+  const body = h("tbody");
+  pend.forEach((b) => {
+    const d = S.details[b.id]; if (d && !S.sel[b.id]) S.sel[b.id] = new Set(d.items.filter((i) => i.old !== i.new).map((i) => i.id));
+    const items = d ? d.items.filter((i) => i.old !== i.new) : []; const sset = S.sel[b.id] || new Set();
+    body.append(h("tr", { class: "grp" }, h("td", { colspan: "4" }, h("span", {}, base(b.folder_path) + "   "), h("span", { class: "muted" }, clock(b.created) + " · " + summarize(b.counts) + " · " + sset.size + " of " + items.length + " selected   "),
+      h("button", { class: "primary", disabled: !sset.size, onclick: () => act(() => api("/batches/" + b.id + "/apply", "POST", { ids: [...sset] }), (r) => r.applied ? plural(r.applied, "file") + " organized" : "Nothing could be changed") }, "Apply selected"),
+      " ", h("button", { onclick: () => act(() => api("/batches/" + b.id + "/reject", "POST", {}), "Left as they were") }, "Skip all"))));
+    items.forEach((it) => body.append(h("tr", {}, h("td", {}, h("input", { type: "checkbox", checked: sset.has(it.id), "aria-label": "Include " + it.old, onchange: (e) => { e.target.checked ? sset.add(it.id) : sset.delete(it.id); render(); } })),
+      h("td", { class: "mono", title: it.old + " → " + it.new }, h("span", { class: "old" }, pathEl(it.old)), h("span", { class: "arrow" }, "→"), h("span", { class: "new" }, pathEl(it.new))),
+      h("td", { class: "muted", title: it.reason }, it.reason), h("td", {}, pct(it.confidence) + " " + sureness(it.confidence)))));
+    if (!d) body.append(h("tr", {}, h("td", { colspan: "4", class: "muted" }, "Loading…")));
+  });
+  return h("table", {}, h("colgroup", {}, h("col", { style: "width:30px" }), h("col", { style: "width:46%" }), h("col"), h("col", { style: "width:130px" })),
+    h("thead", {}, h("tr", {}, ["", "Change", "Why", "Confidence"].map((t) => h("th", { style: "top:0" }, t)))), body);
+}
+function viewHistory() {
+  const list = S.batches.filter((b) => b.state !== "pending" && (!S.folder || b.folder_id === S.folder));
+  if (!list.length) return h("div", { class: "empty" }, h("h2", {}, "No history yet"), h("p", {}, "Each batch of changes is recorded here, with an Undo button."));
+  const STATE = { applied: "Applied", rejected: "Skipped", undone: "Undone", failed: "Failed", info: "Note" };
+  const body = h("tbody");
+  list.forEach((b) => { const open = S.open[b.id];
+    body.append(h("tr", {}, h("td", { class: "time" }, clock(b.created)), h("td", {}, STATE[b.state] || b.state), h("td", {}, base(b.folder_path)),
+      h("td", {}, summarize(b.counts)), h("td", { style: "text-align:right" },
+        b.state === "applied" ? h("button", { onclick: async () => { if (await confirmBox("Undo these changes?", "Put " + plural(b.applied, "file") + " back exactly as they were.", "Undo", false)) act(() => api("/batches/" + b.id + "/undo", "POST", {}), "Undone"); } }, "Undo") : null, " ",
+        h("button", { onclick: async () => { S.open[b.id] = !S.open[b.id]; if (S.open[b.id] && !S.details[b.id]) { try { S.details[b.id] = await api("/batches/" + b.id); } catch (e) { toast(e.message, true); } } render(); } }, open ? "Hide" : "Details"))));
+    if (open && S.details[b.id]) S.details[b.id].items.forEach((it) => body.append(h("tr", {}, h("td", {}), h("td", { class: "muted" }, it.status), h("td", {}), h("td", { class: "mono", colspan: "2", title: it.reason }, it.old === it.new ? pathEl(it.old) : [h("span", { class: "old" }, pathEl(it.old)), h("span", { class: "arrow" }, "→"), h("span", { class: "new" }, pathEl(it.new))]))));
+  });
+  return h("table", {}, h("colgroup", {}, h("col", { style: "width:72px" }), h("col", { style: "width:90px" }), h("col", { style: "width:120px" }), h("col"), h("col", { style: "width:150px" })),
+    h("thead", {}, h("tr", {}, ["Time", "Result", "Folder", "Summary", ""].map((t) => h("th", { style: "top:0" }, t)))), body);
+}
+function viewFolder() {
+  const f = folderById(S.folder); if (!f) return h("div", { class: "empty" }, "Select a folder on the left.");
+  const save = (patch) => act(() => api("/folders/" + f.id, "POST", patch), "Saved");
+  const stateTxt = { watching: "Watching", paused: "Paused (monitoring is off)", off: "Turned off", missing: "Folder not found (drive unplugged?)" }[f.state];
+  const kv = (k, v) => [h("div", { class: "k" }, k), h("div", {}, v)];
+  return h("div", {},
+    h("div", { class: "section" }, base(f.path)),
+    h("div", { class: "props" }, kv("Location", h("span", { class: "mono" }, f.path)), kv("Status", stateTxt),
+      kv("Files tracked", f.tracked == null ? "not counted yet" : String(f.tracked)), kv("Waiting to settle", f.settling ? plural(f.settling, "file") + " (still changing)" : "none"),
+      kv("Last checked", ago(f.last_scan)), kv("Awaiting your OK", f.pending ? plural(f.pending, "batch") : "nothing")),
+    h("div", { class: "section" }, "Behaviour"),
+    h("div", { class: "props" },
+      h("div", { class: "k" }, "Watch this folder"), h("div", {}, check(f.enabled, (v) => save({ enabled: v }), "Watch this folder")),
+      h("div", { class: "k" }, "New files"), h("div", {}, sel(MODES, f.mode, (v) => save({ mode: v }), "New files"), h("span", { class: "hint" }, f.mode === "ask" ? "Changes wait under “Awaiting approval”." : "Changes are made immediately; undo from History.")),
+      h("div", { class: "k" }, "How careful"), h("div", {}, sel(CARES, f.care, (v) => save({ care: v }), "Care")),
+      h("div", { class: "k" }, "Exact copies"), h("div", {}, sel(DUPES, f.dupes, (v) => save({ dupes: v }), "Duplicates")),
+      h("div", { class: "k" }, "Subfolders"), h("div", {}, check(f.recursive, (v) => save({ recursive: v }), "Include subfolders"))),
+    h("div", { class: "btnrow" },
+      h("button", { onclick: () => act(() => api("/folders/" + f.id + "/scan", "POST", {}), "Checking…") }, "Check now"),
+      h("button", { onclick: async () => { if (await confirmBox("Organize files already in this folder?", f.mode === "ask" ? "They will be analyzed and listed under “Awaiting approval”. Nothing changes until you apply." : "They will be renamed now. You can undo from History.", "Start", false))
+        { S.view = "activity"; act(() => api("/folders/" + f.id + "/scan", "POST", { everything: true }), "Analyzing the files already in this folder…"); } } }, "Organize existing files…"),
+      h("button", { onclick: () => act(() => api("/folders/" + f.id + "/open", "POST", {})) }, "Open folder"),
+      h("button", { onclick: () => act(() => api("/folders/" + f.id + "/open", "POST", { review: true })) }, "Open _Review_Needed"),
+      h("button", { class: "danger", onclick: async () => { if (await confirmBox("Stop watching this folder?", "Your files stay exactly as they are.", "Stop watching", true)) { S.folder = null; S.view = "activity"; act(() => api("/folders/" + f.id + "/delete", "POST", {}), "Removed"); } } }, "Remove")));
+}
+
+/* ---------- shell ---------- */
+function renderBar() {
+  const st = S.st, running = !st.paused;
+  put($("#bar"), h("span", { class: "name" }, "File Organizer"),
+    h("button", { onclick: addFolder }, "Add folder"),
+    h("button", { onclick: () => act(() => Promise.all((S.folder ? [S.folder] : st.folders.map((f) => f.id)).map((id) => api("/folders/" + id + "/scan", "POST", {}))), "Checking…"), disabled: !st.folders.length }, "Check now"),
+    h("span", { class: "sep" }),
+    h("button", { class: "seg", "aria-pressed": String(running), onclick: () => act(() => api("/pause", "POST", { paused: running }), running ? "Monitoring paused" : "Monitoring resumed") },
+      h("span", { class: "dot " + (running ? "ok" : "warn") }), running ? "Monitoring: on" : "Monitoring: paused"),
+    h("span", { class: "grow" }), h("button", { onclick: openSettings }, "Settings"));
+}
+function renderLeft() {
+  const st = S.st;
+  put($("#left"), h("h3", {}, "Folders"),
+    h("button", { class: "frow" + (!S.folder ? " on" : ""), onclick: () => { S.folder = null; if (S.view === "folder") S.view = "activity"; render(); } }, h("span", { class: "n" }, "All folders"), st.pending ? h("span", { class: "badge" }, st.pending) : null),
+    st.folders.map((f) => h("button", { class: "frow" + (S.folder === f.id ? " on" : ""), title: f.path, onclick: () => { S.folder = f.id; render(); } },
+      h("span", { class: "dot " + ({ watching: "ok", paused: "warn", off: "", missing: "bad" }[f.state] || "") }), h("span", { class: "n" }, base(f.path)), f.pending ? h("span", { class: "badge" }, f.pending) : null)),
+    h("div", { class: "foot" }, h("button", { onclick: addFolder }, "Add folder…")));
+}
+function renderTabs() {
+  const tabs = [["activity", "Activity"], ["approval", "Awaiting approval" + (S.st.pending ? " (" + S.st.pending + ")" : "")], ["history", "History"], ["folder", "Folder settings"]];
+  put($("#tabs"), tabs.map(([id, label]) => h("button", { class: "tab" + (S.view === id ? " on" : ""), role: "tab", "aria-selected": String(S.view === id), disabled: id === "folder" && !S.folder, onclick: () => { S.view = id; render(); } }, label)));
+}
+function render() {
+  if (!S.st) return;
+  if (S.view === "folder" && !S.folder) S.view = "activity";
+  const c = $("#content"), y = c.scrollTop;
+  renderBar(); renderLeft(); renderTabs();
+  put(c, { activity: viewActivity, approval: viewApproval, history: viewHistory, folder: viewFolder }[S.view]()); c.scrollTop = y;
+  document.title = (S.st.pending ? "(" + S.st.pending + ") " : "") + "File Organizer";
+  paintStatus();
+}
+
+/* The status bar answers "what is it doing right now?" at all times. */
+function paintStatus() {
+  const st = S.st, bar = $("#status"); if (!st) return;
+  const live = st.live || { phase: "idle" }; const active = st.folders.filter((f) => f.state === "watching");
+  const lastScan = Math.max(0, ...st.folders.map((f) => f.last_scan || 0)); const nextCheck = Math.min(...active.map((f) => f.next_check || Infinity));
+  const settling = st.folders.reduce((n, f) => n + (f.settling || 0), 0);
+  let left;
+  if (S.offline) left = [h("span", { class: "dot bad" }), h("span", { class: "t" }, "Lost contact with File Organizer. It may have been closed. Trying to reconnect…")];
+  else if (live.phase === "working") {
+    const frac = live.total ? Math.min(1, live.done / live.total) : 0;
+    left = [h("span", { class: "spin" }), h("span", { class: "t" }, live.label + (live.total ? " " + live.done + "/" + live.total : "") + (live.current ? ": " + live.current : "") + "  (" + live.folder + ")"),
+      live.total ? h("span", { class: "prog" }, h("i", { style: "width:" + Math.round(frac * 100) + "%" })) : null];
+  } else if (!st.folders.length) left = [h("span", { class: "dot" }), h("span", { class: "t" }, "No folders added yet. Nothing is being watched.")];
+  else if (st.paused) left = [h("span", { class: "dot warn" }), h("span", { class: "t" }, "Monitoring is paused. Nothing is being watched.")];
+  else if (!active.length) left = [h("span", { class: "dot warn" }), h("span", { class: "t" }, "No folder is being watched (all turned off or missing).")];
+  else {
+    const eta = isFinite(nextCheck) ? Math.max(0, Math.round(nextCheck - nowS())) : null;
+    left = [h("span", { id: "hb", class: "dot ok" + (lastScan && lastScan !== S.lastBeat ? " beat" : "") }),
+      h("span", { class: "t" }, "Watching " + plural(active.length, "folder") + ". Idle" + (settling ? ", " + plural(settling, "new file") + " waiting to stop changing" : "") +
+        ". Last check " + ago(lastScan) + (eta != null ? ", next in " + eta + "s" : "") + ".")];
+    S.lastBeat = lastScan;
+  }
+  const msg = Date.now() < S.msgUntil ? S.msg : "";
+  put(bar, h("div", { class: "live" }, left), msg ? h("span", {}, msg) : null,
+    h("span", { class: "muted" }, "Today: " + plural(st.organized_today, "file") + " organized · " + st.pending + " awaiting OK"));
+}
+function applyTheme() { document.documentElement.dataset.theme = localStorage.getItem("theme") || "auto"; }
+
+/* ---------- polling ---------- */
+let busy = false;
+async function poll() {
+  if (busy) return; busy = true;
+  try {
+    const [st, batches, ev] = await Promise.all([api("/state"), api("/batches"), api("/events?since=" + S.lastEvent)]);
+    if (S.st && st.pending > S.st.pending) note(plural(st.pending - S.st.pending, "batch") + " of changes waiting for your approval. See “Awaiting approval”.");
+    S.skew = st.now - Date.now() / 1000; S.offline = false; S.st = st; S.batches = batches;
+    S.flash = new Set(ev.events.map((e) => e.id));
+    if (ev.events.length) S.events = S.events.concat(ev.events).slice(-1500);
+    S.lastEvent = ev.last_id;
+    for (const b of batches) if (b.state === "pending" && !S.details[b.id]) { try { S.details[b.id] = await api("/batches/" + b.id); } catch (e) {} }
+    for (const b of batches) if (S.details[b.id] && S.details[b.id].state !== b.state) delete S.details[b.id];
+    const sig = JSON.stringify([st.folders.map((f) => [f.id, f.state, f.mode, f.care, f.dupes, f.recursive, f.enabled, f.pending, f.tracked, f.settling, f.last_scan]), st.paused, st.pending, st.interval, st.autostart, st.organized_today,
+      batches.map((b) => [b.id, b.state]), ev.events.length, S.lastEvent, Object.keys(S.details).length]);
+    if (sig !== S.sig) { S.sig = sig; render(); } else paintStatus();
+  } catch (e) { if (!S.offline) { S.offline = true; paintStatus(); } }
+  busy = false;
+}
+applyTheme();
+poll(); setInterval(poll, 1000); setInterval(() => { if (S.st) paintStatus(); }, 500);
+</script>
+</body>
+</html>

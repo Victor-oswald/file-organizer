@@ -1,0 +1,368 @@
+{
+ "clustering": [
+  {
+   "n": 100,
+   "legacy_s": 0.2900908450000088,
+   "current_s": 0.03336236900003087,
+   "clusters_current": 31
+  },
+  {
+   "n": 200,
+   "legacy_s": 1.5552914460000125,
+   "current_s": 0.0668750549999686,
+   "clusters_current": 35
+  },
+  {
+   "n": 300,
+   "legacy_s": 4.409943749999968,
+   "current_s": 0.09229230200003258,
+   "clusters_current": 47
+  },
+  {
+   "n": 400,
+   "legacy_s": 9.137897909999992,
+   "current_s": 0.15341427300000987,
+   "clusters_current": 71
+  },
+  {
+   "n": 600,
+   "legacy_s": null,
+   "current_s": 0.22817289800002527,
+   "clusters_current": 163
+  },
+  {
+   "n": 800,
+   "legacy_s": null,
+   "current_s": 0.3486548370000264,
+   "clusters_current": 232
+  },
+  {
+   "n": 1200,
+   "legacy_s": null,
+   "current_s": 0.6060180609999861,
+   "clusters_current": 406
+  },
+  {
+   "n": 1700,
+   "legacy_s": null,
+   "current_s": 0.6574682770000209,
+   "clusters_current": 1096
+  }
+ ],
+ "machine": {
+  "python": "3.12.3",
+  "os": "Linux 6.18.44-fc-v595",
+  "cpu": "Intel(R) Xeon(R) Processor @ 2.30GHz",
+  "cores": 1
+ },
+ "images": [
+  {
+   "class": "12 MP JPEG (4000\u00d73000)",
+   "files": 20,
+   "legacy_ms": 169.423180500047,
+   "current_ms": 5.5637809999780075
+  },
+  {
+   "class": "2 MP JPEG (1600\u00d71200)",
+   "files": 20,
+   "legacy_ms": 17.091398499985644,
+   "current_ms": 5.78710150000461
+  },
+  {
+   "class": "1080p PNG screenshot",
+   "files": 20,
+   "legacy_ms": 18.38385049998692,
+   "current_ms": 11.088782999991054
+  }
+ ],
+ "pipeline": {
+  "files": 2399,
+  "total_s": 4.339382320999903,
+  "stages": [
+   {
+    "stage": "Crawl folder",
+    "seconds": 2.8709999924103613e-06
+   },
+   {
+    "stage": "Fingerprint + magic bytes",
+    "seconds": 0.14308852800093064
+   },
+   {
+    "stage": "Duplicate detection",
+    "seconds": 0.004125536000060492
+   },
+   {
+    "stage": "Other media + text extraction",
+    "seconds": 0.31235146100061684
+   },
+   {
+    "stage": "Images (EXIF, dHash)",
+    "seconds": 1.6270975759986186
+   },
+   {
+    "stage": "TF-IDF + clustering",
+    "seconds": 1.297591273000421
+   },
+   {
+    "stage": "Photo grouping",
+    "seconds": 0.0010575559999779216
+   },
+   {
+    "stage": "Score + decide",
+    "seconds": 0.08533194300082414
+   },
+   {
+    "stage": "Write manifest",
+    "seconds": 0.06947460100002445
+   },
+   {
+    "stage": "Other (grouping, I/O glue)",
+    "seconds": 0.7992609759984362
+   }
+  ]
+ },
+ "scaling": [
+  {
+   "files": 357,
+   "seconds": 0.669483213000035,
+   "files_per_s": 533.2471271389165
+  },
+  {
+   "files": 597,
+   "seconds": 1.097350477999953,
+   "files_per_s": 544.0376725292915
+  },
+  {
+   "files": 1200,
+   "seconds": 2.235668804999932,
+   "files_per_s": 536.7521331049911
+  },
+  {
+   "files": 2399,
+   "seconds": 4.352603766000016,
+   "files_per_s": 551.1643441425979
+  }
+ ],
+ "latency": {
+  "previous": {
+   "config": "30 s interval, 5 s settle, no fast re-check",
+   "samples": [
+    55.0,
+    37.1,
+    45.2,
+    40.5,
+    57.2
+   ]
+  },
+  "current": {
+   "config": "5 s interval, 3 s settle, 1.5 s fast re-check",
+   "samples": [
+    5.78,
+    6.18,
+    3.87,
+    3.16,
+    3.46,
+    3.57,
+    4.37,
+    4.42
+   ]
+  }
+ },
+ "evaluation": {
+  "duplicates": {
+   "files": 2399,
+   "duplicate_files_in_truth": 227,
+   "detected": 227,
+   "true_positives": 227,
+   "false_positives": 0,
+   "false_negatives": 0,
+   "full_hashes_computed": 258,
+   "full_hash_share": 0.10754481033764068
+  },
+  "text_clustering": {
+   "default_threshold": 0.08,
+   "calibration_seed": 7,
+   "held_out_seeds": [
+    11,
+    13,
+    17,
+    19,
+    23
+   ],
+   "sweep": {
+    "hard": [
+     {
+      "threshold": 0.03,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.05,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.08,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.1,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.15,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.2,
+      "precision": 1.0,
+      "recall": 0.5328070175438596,
+      "f1": 0.6952043035366829,
+      "ari": 0.6883315289376418,
+      "clusters_found": 67
+     },
+     {
+      "threshold": 0.3,
+      "precision": 1.0,
+      "recall": 0.1943859649122807,
+      "f1": 0.32549941245593417,
+      "ari": 0.3184627521873749,
+      "clusters_found": 133
+     }
+    ],
+    "moderate": [
+     {
+      "threshold": 0.03,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.05,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "ari": 1.0,
+      "clusters_found": 30
+     },
+     {
+      "threshold": 0.08,
+      "precision": 1.0,
+      "recall": 0.9042105263157895,
+      "f1": 0.9496959646213377,
+      "ari": 0.9481335440635084,
+      "clusters_found": 37
+     },
+     {
+      "threshold": 0.1,
+      "precision": 1.0,
+      "recall": 0.5742105263157895,
+      "f1": 0.7295218990304246,
+      "ari": 0.7231147483845679,
+      "clusters_found": 64
+     },
+     {
+      "threshold": 0.15,
+      "precision": 1.0,
+      "recall": 0.20403508771929824,
+      "f1": 0.33891884015736556,
+      "ari": 0.33173475678202435,
+      "clusters_found": 112
+     },
+     {
+      "threshold": 0.2,
+      "precision": 1.0,
+      "recall": 0.09403508771929825,
+      "f1": 0.17190506735086594,
+      "ari": 0.16736491775495857,
+      "clusters_found": 102
+     },
+     {
+      "threshold": 0.3,
+      "precision": 1.0,
+      "recall": 0.0005263157894736842,
+      "f1": 0.0010520778537611783,
+      "ari": 0.0010187404328417325,
+      "clusters_found": 3
+     }
+    ]
+   },
+   "held_out": {
+    "hard": {
+     "current_default": {
+      "threshold": 0.08,
+      "ari_mean": 1.0,
+      "ari_min": 1.0,
+      "ari_max": 1.0,
+      "precision_mean": 1.0,
+      "recall_mean": 1.0,
+      "clusters_found_mean": 30.0
+     },
+     "old_default": {
+      "threshold": 0.3,
+      "ari_mean": 0.3176630136459148,
+      "ari_min": 0.2915512188347461,
+      "ari_max": 0.3355579714892023,
+      "precision_mean": 1.0,
+      "recall_mean": 0.19389473684210526,
+      "clusters_found_mean": 130.8
+     }
+    },
+    "moderate": {
+     "current_default": {
+      "threshold": 0.08,
+      "ari_mean": 0.9604667515982213,
+      "ari_min": 0.9455377335757071,
+      "ari_max": 0.9751561984458463,
+      "precision_mean": 1.0,
+      "recall_mean": 0.9263508771929825,
+      "clusters_found_mean": 34.8
+     },
+     "old_default": {
+      "threshold": 0.3,
+      "ari_mean": 0.0009506460471160666,
+      "ari_min": 0.0,
+      "ari_max": 0.0020364775258904758,
+      "precision_mean": 1.0,
+      "recall_mean": 0.0004912280701754386,
+      "clusters_found_mean": 2.4
+     }
+    }
+   }
+  },
+  "photo_grouping": {
+   "precision": 1.0,
+   "recall": 1.0,
+   "f1": 1.0,
+   "ari": 1.0,
+   "images": 240,
+   "scenes": 60,
+   "groups_found": 60,
+   "variant_recovered": {
+    "re-encoded (JPEG q=30)": 1.0,
+    "downscaled 50 %": 1.0,
+    "brightness +18 %": 1.0
+   }
+  }
+ }
+}
